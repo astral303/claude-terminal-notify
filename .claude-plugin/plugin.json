@@ -1,6 +1,6 @@
 {
   "name": "terminal-notify",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Desktop notifications through your terminal when Claude Code finishes, asks a question or needs a permission. From the makers of Agent Terminal (https://4nuva.dev/agent-terminal/), which also forwards them to your phone.",
   "author": { "name": "Agent Terminal", "url": "https://4nuva.dev/agent-terminal/" },
   "homepage": "https://4nuva.dev/agent-terminal/",
@@ -11,7 +11,7 @@
     "format": {
       "type": "string",
       "title": "Notification sequence",
-      "description": "auto picks one for your terminal. osc777: Agent Terminal, Ghostty, Warp, urxvt. osc9: Windows Terminal, iTerm2, WezTerm, ConEmu. osc99: kitty. all: all three, for a terminal auto does not know (one that reads several shows several). bell: the terminal bell only. off: no notifications.",
+      "description": "auto picks one for your terminal. osc777: Agent Terminal, Ghostty, Warp, urxvt, Windows Terminal 1.26+. osc9: iTerm2, WezTerm, ConEmu. osc99: kitty. all: all three, for a terminal auto does not know (one that reads several shows several). bell: the terminal bell only. off: no notifications.",
       "default": "auto",
       "options": ["auto", "osc777", "osc9", "osc99", "all", "bell", "off"]
     },

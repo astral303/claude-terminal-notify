@@ -136,9 +136,10 @@ function detectFormat(env) {
   if (program === "ghostty" || env.GHOSTTY_RESOURCES_DIR || program === "warpterminal" || term.includes("rxvt")) {
     return "osc777";
   }
-  if (program === "iterm.app" || program === "wezterm" || env.WT_SESSION || env.ConEmuPID) return "osc9";
+  if (program === "iterm.app" || program === "wezterm" || env.ConEmuPID) return "osc9";
   // Terminals with no notification sequence: the bell at least gets a look.
   if (program === "apple_terminal" || program === "vscode") return "bell";
+  if (env.WT_SESSION) return "osc777";
   return "osc9";
 }
 

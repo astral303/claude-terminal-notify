@@ -35,15 +35,20 @@ The plugin hands Claude Code a notification escape sequence through the hook's `
 | Terminal | Sequence |
 | --- | --- |
 | [Agent Terminal](https://4nuva.dev/agent-terminal/) (desktop and phone) | OSC 777 |
-| Ghostty, Warp, urxvt | OSC 777 |
-| Windows Terminal, iTerm2, WezTerm, ConEmu | OSC 9 |
+| Ghostty, Warp, urxvt, Windows Terminal | OSC 777 |
+| iTerm2, WezTerm, ConEmu | OSC 9 |
 | kitty | OSC 99 |
 | macOS Terminal, VS Code | bell |
 | anything else | OSC 9 |
 
 Claude Code has notifications of its own, on by default in Ghostty, kitty and iTerm2. If you see two notifications, set **Notifications** to `notifications_disabled` in `/config` (the `preferredNotifChannel` setting) to keep only this plugin's.
 
-Some terminals only show notifications while their window is in the background, and some need notifications turned on in their own settings (iTerm2: Profiles → Terminal → Notifications). Inside tmux, sequences reach the outer terminal only with `allow-passthrough on`.
+Some terminals only show notifications while their window is in the background (Windows Terminal), and some need notifications turned on in their own settings:
+
+- iTerm2: Profiles → Terminal → Notifications.
+- Windows Terminal 1.26 or later (first shipped in Windows Terminal Preview): set `"compatibility.allowOSC777": true` in `settings.json`, in a profile or in `profiles.defaults`. Earlier versions do not show OSC 9 or OSC 777 notifications.
+
+Inside tmux, sequences reach the outer terminal only with `allow-passthrough on`.
 
 ## Options
 

@@ -61,11 +61,16 @@ test("terminal detection", () => {
   assert.strictEqual(detectFormat({ TERM_PROGRAM: "ghostty" }), "osc777");
   assert.strictEqual(detectFormat({ TERM_PROGRAM: "WarpTerminal" }), "osc777");
   assert.strictEqual(detectFormat({ TERM: "rxvt-unicode-256color" }), "osc777");
-  assert.strictEqual(detectFormat({ WT_SESSION: "x" }), "osc9");
+  assert.strictEqual(detectFormat({ WT_SESSION: "x" }), "osc777");
   assert.strictEqual(detectFormat({ TERM_PROGRAM: "iTerm.app" }), "osc9");
   assert.strictEqual(detectFormat({ TERM_PROGRAM: "WezTerm" }), "osc9");
   assert.strictEqual(detectFormat({ TERM_PROGRAM: "Apple_Terminal" }), "bell");
   assert.strictEqual(detectFormat({}), "osc9");
+});
+
+test("a terminal started from Windows Terminal inherits WT_SESSION but is detected by its TERM_PROGRAM", () => {
+  assert.strictEqual(detectFormat({ WT_SESSION: "x", TERM_PROGRAM: "vscode" }), "bell");
+  assert.strictEqual(detectFormat({ WT_SESSION: "x", TERM_PROGRAM: "WezTerm" }), "osc9");
 });
 
 test("sequences", () => {
@@ -83,16 +88,16 @@ test("sequences", () => {
 });
 
 test("format option overrides detection, off and bad values", () => {
-  assert.strictEqual(output(stop, { WT_SESSION: "x", CLAUDE_PLUGIN_OPTION_FORMAT: "osc777" }).terminalSequence.startsWith("\x1b]777;"), true);
+  assert.strictEqual(output(stop, { WT_SESSION: "x", CLAUDE_PLUGIN_OPTION_FORMAT: "osc9" }).terminalSequence.startsWith("\x1b]9;"), true);
   assert.strictEqual(output(stop, { CLAUDE_PLUGIN_OPTION_FORMAT: "off" }), null);
-  assert.strictEqual(output(stop, { WT_SESSION: "x", CLAUDE_PLUGIN_OPTION_FORMAT: "nonsense" }).terminalSequence.startsWith("\x1b]9;"), true);
+  assert.strictEqual(output(stop, { WT_SESSION: "x", CLAUDE_PLUGIN_OPTION_FORMAT: "nonsense" }).terminalSequence.startsWith("\x1b]777;"), true);
   assert.strictEqual(output(stop, { TERMINAL_NOTIFY_FORMAT: "bell" }).terminalSequence, "\x07");
 });
 
 test("the script prints the hook output and exits 0, even on bad input", () => {
   const ok = spawnSync(process.execPath, [SCRIPT], { input: JSON.stringify(stop), env: { WT_SESSION: "x" } });
   assert.strictEqual(ok.status, 0);
-  assert.deepStrictEqual(JSON.parse(ok.stdout.toString()), { terminalSequence: "\x1b]9;Claude Code · my-app: Task complete: Fixed the bug. Tests pass.\x07" });
+  assert.deepStrictEqual(JSON.parse(ok.stdout.toString()), { terminalSequence: "\x1b]777;notify;Claude Code · my-app;Task complete: Fixed the bug. Tests pass.\x07" });
   const bad = spawnSync(process.execPath, [SCRIPT], { input: "not json" });
   assert.strictEqual(bad.status, 0);
   assert.strictEqual(bad.stdout.toString(), "");
