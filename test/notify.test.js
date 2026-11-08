@@ -2,17 +2,60 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const { spawnSync } = require("node:child_process");
+const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
-const { build, detectFormat, mask, output, sequence } = require("../hooks/notify.js");
+const { build, detectFormat, mask, output, sequence, sessionTitle } = require("../hooks/notify.js");
 
 const SCRIPT = path.join(__dirname, "..", "hooks", "notify.js");
 const stop = { hook_event_name: "Stop", cwd: "/work/my-app", last_assistant_message: "Fixed the bug. Tests pass. More text." };
 
+const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), "terminal-notify-"));
+test.after(() => fs.rmSync(fixtureDir, { recursive: true, force: true }));
+let fixtureCount = 0;
+function transcriptWith(...entries) {
+  const file = path.join(fixtureDir, `${++fixtureCount}.jsonl`);
+  fs.writeFileSync(file, entries.map((entry) => JSON.stringify(entry)).join("\n") + "\n");
+  return file;
+}
+const generated = (aiTitle) => ({ type: "ai-title", aiTitle, sessionId: "s1" });
+const renamed = (customTitle) => ({ type: "custom-title", customTitle, sessionId: "s1" });
+const reply = { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "Done." }] } };
+
 test("Stop names the folder and the start of the reply", () => {
   assert.deepStrictEqual(build(stop, {}), {
-    title: "Claude Code · my-app",
+    title: "Claude: my-app",
     body: "Task complete: Fixed the bug. Tests pass.",
   });
+});
+
+test("Stop falls back to the last reply in the transcript", () => {
+  const n = build({ hook_event_name: "Stop", cwd: "/work/my-app", transcript_path: transcriptWith(reply, generated("Tidy up")) }, {});
+  assert.deepStrictEqual(n, { title: "Claude: Tidy up · my-app", body: "Task complete: Done." });
+});
+
+test("session title: the newest rename wins over a newer generated title", () => {
+  assert.strictEqual(sessionTitle(transcriptWith(generated("Old"), renamed("Login fix"), reply, generated("Newer"))), "Login fix");
+  assert.strictEqual(sessionTitle(transcriptWith(renamed("First"), renamed("Second"))), "Second");
+});
+
+test("session title: the newest generated title without a rename, empty without either", () => {
+  assert.strictEqual(sessionTitle(transcriptWith(generated("First guess"), reply, generated("Better guess"))), "Better guess");
+  assert.strictEqual(sessionTitle(transcriptWith(reply)), "");
+});
+
+test("the title names the session before the folder; details off or no transcript leaves it out", () => {
+  const p = { ...stop, transcript_path: transcriptWith(generated("Fix the login redirect")) };
+  assert.strictEqual(build(p, {}).title, "Claude: Fix the login redirect · my-app");
+  assert.strictEqual(build(p, { CLAUDE_PLUGIN_OPTION_DETAILS: "false" }).title, "Claude: my-app");
+  assert.strictEqual(build({ ...stop, transcript_path: path.join(fixtureDir, "missing.jsonl") }, {}).title, "Claude: my-app");
+  assert.strictEqual(build({ ...stop, cwd: undefined }, {}).title, "Claude");
+});
+
+test("a long session title is cut so the folder stays whole", () => {
+  const title = build({ ...stop, transcript_path: transcriptWith(generated("word ".repeat(40))) }, {}).title;
+  assert.strictEqual(Array.from(title).length, 80);
+  assert.ok(title.endsWith("… · my-app"), title);
 });
 
 test("subagents stay quiet, the main agent under --agent does not", () => {
@@ -22,7 +65,7 @@ test("subagents stay quiet, the main agent under --agent does not", () => {
 
 test("permission and question bodies", () => {
   const perm = build({ hook_event_name: "PermissionRequest", cwd: "C:\\src\\app\\", tool_name: "Bash", tool_input: { command: "npm test" } }, {});
-  assert.strictEqual(perm.title, "Claude Code · app");
+  assert.strictEqual(perm.title, "Claude: app");
   assert.strictEqual(perm.body, "Permission needed: Bash — npm test");
   const q = build({ hook_event_name: "PreToolUse", tool_name: "AskUserQuestion", tool_input: { questions: [{ question: "Which one?" }] } }, {});
   assert.strictEqual(q.body, "Question: Which one?");
@@ -112,7 +155,7 @@ test("every hook runs the node option, which defaults to node", () => {
 test("the script prints the hook output and exits 0, even on bad input", () => {
   const ok = spawnSync(process.execPath, [SCRIPT], { input: JSON.stringify(stop), env: { WT_SESSION: "x" } });
   assert.strictEqual(ok.status, 0);
-  assert.deepStrictEqual(JSON.parse(ok.stdout.toString()), { terminalSequence: "\x1b]777;notify;Claude Code · my-app;Task complete: Fixed the bug. Tests pass.\x07" });
+  assert.deepStrictEqual(JSON.parse(ok.stdout.toString()), { terminalSequence: "\x1b]777;notify;Claude: my-app;Task complete: Fixed the bug. Tests pass.\x07" });
   const bad = spawnSync(process.execPath, [SCRIPT], { input: "not json" });
   assert.strictEqual(bad.status, 0);
   assert.strictEqual(bad.stdout.toString(), "");

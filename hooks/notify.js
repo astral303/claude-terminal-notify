@@ -70,31 +70,56 @@ function firstSentences(text, count) {
   return parts.slice(0, count).join(" ").trim();
 }
 
-// The last assistant text in the transcript, for Claude Code builds whose
-// Stop input has no `last_assistant_message`. Reads the tail only.
-function lastAssistantText(file) {
+const TRANSCRIPT_TAIL_BYTES = 512 * 1024;
+
+// The transcript's entries, newest first, from its last 512 KB only.
+function* entriesFromEnd(file) {
   const fd = fs.openSync(file, "r");
+  let lines;
   try {
     const size = fs.fstatSync(fd).size;
-    const len = Math.min(size, 512 * 1024);
+    const len = Math.min(size, TRANSCRIPT_TAIL_BYTES);
     const buf = Buffer.alloc(len);
     fs.readSync(fd, buf, 0, len, size - len);
-    const lines = buf.toString("utf8").split("\n");
-    for (let i = lines.length - 1; i >= 0; i--) {
-      if (!lines[i].trim()) continue;
-      let entry;
-      try { entry = JSON.parse(lines[i]); } catch { continue; }
-      const m = entry && entry.message;
-      if (!(entry.type === "assistant" || (m && m.role === "assistant"))) continue;
-      const c = m && m.content;
-      const text = typeof c === "string" ? c
-        : Array.isArray(c) ? c.filter((b) => b && b.type === "text").map((b) => b.text).join(" ") : "";
-      if (firstSentences(text, 1)) return text;
-    }
+    lines = buf.toString("utf8").split("\n");
   } finally {
     fs.closeSync(fd);
   }
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (!lines[i].trim()) continue;
+    let entry;
+    // The first line can start mid-entry, where the tail read began.
+    try { entry = JSON.parse(lines[i]); } catch { continue; }
+    if (entry && typeof entry === "object") yield entry;
+  }
+}
+
+// The last assistant text in the transcript, for Claude Code builds whose
+// Stop input has no `last_assistant_message`.
+function lastAssistantText(file) {
+  for (const entry of entriesFromEnd(file)) {
+    const m = entry.message;
+    if (!(entry.type === "assistant" || (m && m.role === "assistant"))) continue;
+    const c = m && m.content;
+    const text = typeof c === "string" ? c
+      : Array.isArray(c) ? c.filter((b) => b && b.type === "text").map((b) => b.text).join(" ") : "";
+    if (firstSentences(text, 1)) return text;
+  }
   return "";
+}
+
+// The session's name: the newest `/rename` title, else the newest title
+// Claude Code generated. Claude Code writes both again as the session goes
+// on, which is why reading the tail is enough.
+function sessionTitle(file) {
+  let generated = "";
+  for (const entry of entriesFromEnd(file)) {
+    if (entry.type === "custom-title" && typeof entry.customTitle === "string" && entry.customTitle) {
+      return entry.customTitle;
+    }
+    if (!generated && entry.type === "ai-title" && typeof entry.aiTitle === "string") generated = entry.aiTitle;
+  }
+  return generated;
 }
 
 // The part of a tool call worth naming: its command, file, URL, ...
@@ -204,9 +229,26 @@ function build(p, env) {
     return null;
   }
   // Both separators: a Windows path keeps its folder name on any platform.
-  const folder = String(p.cwd || "").replace(/[\\/]+$/, "").split(/[\\/]/).pop() || "Claude Code";
-  const title = cap(clean(`Claude Code · ${folder}`), 80);
-  return { title, body: cap(clean(body), 200) };
+  const folder = clean(String(p.cwd || "").replace(/[\\/]+$/, "").split(/[\\/]/).pop());
+  let name = "";
+  if (details && p.transcript_path) {
+    try { name = clean(sessionTitle(p.transcript_path)); } catch { name = ""; }
+  }
+  return { title: notificationTitle(name, folder), body: cap(clean(body), 200) };
+}
+
+const AGENT_NAME = "Claude";
+const TITLE_LIMIT = 80;
+const SESSION_NAME_MIN_CHARS = 16;
+
+// `Claude: <session name> · <folder>`. The session name is cut first, so the
+// folder stays readable.
+function notificationTitle(name, folder) {
+  const prefix = `${AGENT_NAME}: `;
+  const folderLength = folder ? Array.from(` · ${folder}`).length : 0;
+  const room = Math.max(TITLE_LIMIT - prefix.length - folderLength, SESSION_NAME_MIN_CHARS);
+  const parts = [name ? cap(name, room) : "", folder].filter(Boolean);
+  return parts.length ? cap(prefix + parts.join(" · "), TITLE_LIMIT) : AGENT_NAME;
 }
 
 function output(p, env) {
@@ -245,5 +287,5 @@ if (require.main === module) {
   process.exitCode = 0;
   main();
 } else {
-  module.exports = { build, clean, detectFormat, firstSentences, mask, output, sequence };
+  module.exports = { build, clean, detectFormat, firstSentences, mask, output, sequence, sessionTitle };
 }

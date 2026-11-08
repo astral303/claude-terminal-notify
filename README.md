@@ -10,7 +10,7 @@ A Claude Code plugin that raises a desktop notification through your terminal wh
 - needs a permission: `Permission needed: Bash — npm run deploy`
 - asks you a question: `Question: Which database should I use?`
 
-The title names the project folder (`Claude Code · my-app`), so you can tell sessions apart.
+The title names the session and its project folder (`Claude: Fix the login redirect · my-app`), so you can tell sessions apart. The session name is the one you gave it with `/rename`, or else the title Claude Code generated.
 
 ## Install
 
@@ -57,14 +57,14 @@ Set these when you install, or later in `/plugin` → terminal-notify → Config
 | Option | Default | What it does |
 | --- | --- | --- |
 | `format` | `auto` | `auto`, `osc777`, `osc9`, `osc99`, `all`, `bell` or `off`. `all` sends all three sequences, for a terminal `auto` does not know; a terminal that reads more than one (Ghostty reads 9 and 777) shows more than one. |
-| `details` | on | Include the start of the reply, the command or file a permission is for, and the question. Off shows only the event. |
+| `details` | on | Include the session name, the start of the reply, the command or file a permission is for, and the question. Off shows only the event and the project folder. |
 | `idle_reminder` | off | Notify again when the prompt has waited 60 seconds for a reply |
 | `ring_bell` | off | Also ring the terminal bell with each notification, so the terminal marks the tab. Windows Terminal rings it as the profile's `bellStyle` sets; with `notification` in `bellStyle`, you get a second notification that shows only the tab title. |
 | `node` | `node` | The Node.js executable the hooks run. Set a full path when Node.js is not on your `PATH`, for example `node.exe` in the folder `mise where node` prints. |
 
 ## Privacy
 
-Nothing leaves your machine except through your terminal. Before any text goes into a notification, known key and token formats (API keys, GitHub and Slack tokens, JWTs, bearer tokens, `password=...`, credentials in URLs, long random strings) are replaced with `***`. Turn `details` off to keep reply text and commands out of notifications entirely, for example when notifications show on a lock screen.
+Nothing leaves your machine except through your terminal. Before any text goes into a notification, known key and token formats (API keys, GitHub and Slack tokens, JWTs, bearer tokens, `password=...`, credentials in URLs, long random strings) are replaced with `***`. Turn `details` off to keep session names, reply text and commands out of notifications entirely, for example when notifications show on a lock screen.
 
 Subagents' turns do not notify; only the main session's do.
 
