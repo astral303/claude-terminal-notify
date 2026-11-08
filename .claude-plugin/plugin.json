@@ -1,6 +1,6 @@
 {
   "name": "terminal-notify",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Desktop notifications through your terminal when Claude Code finishes, asks a question or needs a permission. From the makers of Agent Terminal (https://4nuva.dev/agent-terminal/), which also forwards them to your phone.",
   "author": { "name": "Agent Terminal", "url": "https://4nuva.dev/agent-terminal/" },
   "homepage": "https://4nuva.dev/agent-terminal/",
@@ -26,6 +26,12 @@
       "title": "Idle reminder",
       "description": "Notify again when the prompt has waited 60 seconds for a reply.",
       "default": false
+    },
+    "in_progress_replies": {
+      "type": "boolean",
+      "title": "In-progress replies",
+      "description": "Notify when a turn ends while background agents or commands keep running (In-progress reply). Off notifies only for turns that leave nothing running.",
+      "default": true
     },
     "ring_bell": {
       "type": "boolean",

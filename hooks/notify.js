@@ -237,7 +237,9 @@ function build(p, env) {
   if (ev === "Stop") {
     // A background task wakes Claude for another turn when it finishes, so
     // this reply is not the last one.
-    const label = Array.isArray(p.background_tasks) && p.background_tasks.length ? "In-progress reply" : "Reply";
+    const inProgress = Array.isArray(p.background_tasks) && p.background_tasks.length > 0;
+    if (inProgress && !flag(env, "in_progress_replies", true)) return null;
+    const label = inProgress ? "In-progress reply" : "Reply";
     const prefix = `${label}: `;
     const room = BODY_LIMIT - prefix.length;
     const cutBefore = CUT_SENTENCE_START_LIMIT - prefix.length;

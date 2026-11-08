@@ -31,8 +31,15 @@ test("Stop names the folder and the start of the reply", () => {
 
 const stopBody = (reply) => build({ ...stop, last_assistant_message: reply }, {}).body;
 
+const running = [{ id: "t1", type: "subagent", status: "running", agent_type: "general-purpose" }];
+
+test("in_progress_replies off skips a turn that leaves background tasks running, not other turns", () => {
+  const off = { CLAUDE_PLUGIN_OPTION_IN_PROGRESS_REPLIES: "false" };
+  assert.strictEqual(build({ ...stop, background_tasks: running }, off), null);
+  assert.strictEqual(build(stop, off).body, "Reply: Fixed the bug. Tests pass. More text.");
+});
+
 test("a turn that leaves background tasks running is an in-progress reply", () => {
-  const running = [{ id: "t1", type: "subagent", status: "running", agent_type: "general-purpose" }];
   assert.strictEqual(build({ ...stop, background_tasks: running }, {}).body, "In-progress reply: Fixed the bug. Tests pass. More text.");
   assert.strictEqual(build({ ...stop, background_tasks: running }, { CLAUDE_PLUGIN_OPTION_DETAILS: "false" }).body, "In-progress reply");
   assert.strictEqual(build({ ...stop, background_tasks: [] }, {}).body, "Reply: Fixed the bug. Tests pass. More text.");

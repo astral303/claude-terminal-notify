@@ -60,6 +60,7 @@ Set these when you install, or later in `/plugin` → terminal-notify → Config
 | `format` | `auto` | `auto`, `osc777`, `osc9`, `osc99`, `all`, `bell` or `off`. `all` sends all three sequences, for a terminal `auto` does not know; a terminal that reads more than one (Ghostty reads 9 and 777) shows more than one. |
 | `details` | on | Include the session name, the start of the reply, the command or file a permission is for, and the question. Off shows only the event and the project folder. |
 | `idle_reminder` | off | Notify again when the prompt has waited 60 seconds for a reply |
+| `in_progress_replies` | on | Notify when a turn ends while background agents or commands keep running (`In-progress reply:`). Off notifies only for turns that leave nothing running. |
 | `ring_bell` | off | Also ring the terminal bell with each notification, so the terminal marks the tab. Windows Terminal rings it as the profile's `bellStyle` sets; with `notification` in `bellStyle`, you get a second notification that shows only the tab title. |
 | `node` | `node` | The Node.js executable the hooks run. Set a full path when Node.js is not on your `PATH`, for example `node.exe` in the folder `mise where node` prints. |
 
