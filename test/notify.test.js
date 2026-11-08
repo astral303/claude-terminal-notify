@@ -25,8 +25,53 @@ const reply = { type: "assistant", message: { role: "assistant", content: [{ typ
 test("Stop names the folder and the start of the reply", () => {
   assert.deepStrictEqual(build(stop, {}), {
     title: "Claude: my-app",
-    body: "Task complete: Fixed the bug. Tests pass.",
+    body: "Task complete: Fixed the bug. Tests pass. More text.",
   });
+});
+
+const stopBody = (reply) => build({ ...stop, last_assistant_message: reply }, {}).body;
+const charCount = (s) => Array.from(s).length;
+
+test("Stop fits as many whole sentences of the reply as the body holds", () => {
+  const sentences = Array(30).fill("abcdefghi.");
+  assert.strictEqual(stopBody(sentences.join(" ")), "Task complete: " + sentences.slice(0, 16).join(" "));
+});
+
+test("a sentence that does not fit is cut when it starts before character 160, left out after", () => {
+  const long = "word ".repeat(60).trim() + ".";
+  const cut = stopBody(`Done. ${long}`);
+  assert.strictEqual(charCount(cut), 200);
+  assert.ok(cut.startsWith("Task complete: Done. word word") && cut.endsWith("…"), cut);
+  assert.ok(stopBody(long).endsWith("…"));
+  // 15 + 150 characters: the long sentence would start at character 166.
+  const opening = "abcd ".repeat(30).trim() + ".";
+  assert.strictEqual(stopBody(`${opening} ${long}`), `Task complete: ${opening}`);
+});
+
+test("tables, headings, rules and code stay out of the summary, and list items end sentences", () => {
+  const reply = [
+    "No: the title fits.",
+    "",
+    "| Part | Lines |",
+    "| --- | --- |",
+    "| Title | 2 |",
+    "",
+    "## Next steps",
+    "",
+    "- Push the branches",
+    "- Fix **the** bug",
+    "",
+    "---",
+    "```js",
+    "code();",
+    "```",
+    "Done",
+  ].join("\n");
+  assert.strictEqual(stopBody(reply), "Task complete: No: the title fits. Push the branches. Fix the bug. Done.");
+});
+
+test("a dot inside a file name or a version does not end a sentence", () => {
+  assert.strictEqual(stopBody("Fixed notify.js for 1.3.1. Tests pass."), "Task complete: Fixed notify.js for 1.3.1. Tests pass.");
 });
 
 test("Stop falls back to the last reply in the transcript", () => {
@@ -155,7 +200,7 @@ test("every hook runs the node option, which defaults to node", () => {
 test("the script prints the hook output and exits 0, even on bad input", () => {
   const ok = spawnSync(process.execPath, [SCRIPT], { input: JSON.stringify(stop), env: { WT_SESSION: "x" } });
   assert.strictEqual(ok.status, 0);
-  assert.deepStrictEqual(JSON.parse(ok.stdout.toString()), { terminalSequence: "\x1b]777;notify;Claude: my-app;Task complete: Fixed the bug. Tests pass.\x07" });
+  assert.deepStrictEqual(JSON.parse(ok.stdout.toString()), { terminalSequence: "\x1b]777;notify;Claude: my-app;Task complete: Fixed the bug. Tests pass. More text.\x07" });
   const bad = spawnSync(process.execPath, [SCRIPT], { input: "not json" });
   assert.strictEqual(bad.status, 0);
   assert.strictEqual(bad.stdout.toString(), "");

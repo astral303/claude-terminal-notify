@@ -52,22 +52,54 @@ function clean(s) {
   return mask(s).replace(/\s+/g, " ").trim();
 }
 
+function charLength(s) {
+  return Array.from(s).length;
+}
+
 function cap(s, n) {
   const chars = Array.from(s);
   return chars.length <= n ? s : chars.slice(0, n - 1).join("") + "…";
 }
 
-// The first sentences of a reply, without code blocks or inline code.
-function firstSentences(text, count) {
-  let t = String(text || "")
-    .replace(/```[\s\S]*?(```|$)/g, " ")
-    .replace(/`[^`]*`/g, " ")
-    .replace(/^#+\s+/gm, "")
-    .replace(/[*_]{1,2}([^*_]+)[*_]{1,2}/g, "$1");
-  t = clean(t);
-  if (!t) return "";
-  const parts = t.match(/[^.!?]+(?:[.!?]+(?=\s|$)|$)/g) || [t];
-  return parts.slice(0, count).join(" ").trim();
+// The reply as plain-text sentences, in order. Code, tables, headings and
+// rules are left out. Each line ends a sentence, so a list item does not run
+// into the sentence before it.
+function replySentences(text) {
+  const prose = String(text || "")
+    .replace(/```[\s\S]*?(```|$)/g, "\n")
+    .replace(/`[^`]*`/g, " ");
+  const sentences = [];
+  for (const rawLine of prose.split("\n")) {
+    if (/^\s*(?:\||#{1,6}\s)/.test(rawLine)) continue;
+    const line = clean(rawLine
+      .replace(/^\s*(?:>+\s*)?(?:(?:[-*+]|\d+[.)])\s+)?/, "")
+      .replace(/[*_]{1,2}([^*_]+)[*_]{1,2}/g, "$1"));
+    if (!/[\p{L}\p{N}]/u.test(line)) continue;
+    // A sentence ends at punctuation followed by a space, not at the dot in
+    // a file name or a version number.
+    const lineSentences = line.match(/.+?(?:[.!?]+(?=\s|$)|$)/g).map((s) => s.trim()).filter(Boolean);
+    const last = lineSentences.length - 1;
+    if (!/[.!?:;…]$/.test(lineSentences[last])) lineSentences[last] += ".";
+    sentences.push(...lineSentences);
+  }
+  return sentences;
+}
+
+// The reply's opening sentences in at most `room` characters. A sentence that
+// does not fit whole is cut with "…" when it starts before `cutBefore`, and
+// left out when it starts later.
+function replySummary(text, room, cutBefore) {
+  let summary = "";
+  for (const sentence of replySentences(text)) {
+    const joined = summary ? `${summary} ${sentence}` : sentence;
+    if (charLength(joined) <= room) {
+      summary = joined;
+      continue;
+    }
+    const start = summary ? charLength(summary) + 1 : 0;
+    return start < cutBefore ? cap(joined, room) : summary;
+  }
+  return summary;
 }
 
 const TRANSCRIPT_TAIL_BYTES = 512 * 1024;
@@ -103,7 +135,7 @@ function lastAssistantText(file) {
     const c = m && m.content;
     const text = typeof c === "string" ? c
       : Array.isArray(c) ? c.filter((b) => b && b.type === "text").map((b) => b.text).join(" ") : "";
-    if (firstSentences(text, 1)) return text;
+    if (replySentences(text).length) return text;
   }
   return "";
 }
@@ -206,14 +238,17 @@ function build(p, env) {
   const ev = p.hook_event_name;
   let body;
   if (ev === "Stop") {
-    let ctx = "";
+    const prefix = "Task complete: ";
+    const room = BODY_LIMIT - prefix.length;
+    const cutBefore = CUT_SENTENCE_START_LIMIT - prefix.length;
+    let summary = "";
     if (details) {
       try {
-        ctx = firstSentences(p.last_assistant_message, 2);
-        if (!ctx && p.transcript_path) ctx = firstSentences(lastAssistantText(p.transcript_path), 2);
-      } catch { ctx = ""; }
+        summary = replySummary(p.last_assistant_message, room, cutBefore);
+        if (!summary && p.transcript_path) summary = replySummary(lastAssistantText(p.transcript_path), room, cutBefore);
+      } catch { summary = ""; }
     }
-    body = "Task complete" + (ctx ? `: ${ctx}` : "");
+    body = summary ? prefix + summary : "Task complete";
   } else if (ev === "PermissionRequest") {
     const tool = clean(p.tool_name) || "a tool";
     const sum = details ? cap(clean(summarize(p.tool_input)), 80) : "";
@@ -234,7 +269,7 @@ function build(p, env) {
   if (details && p.transcript_path) {
     try { name = clean(sessionTitle(p.transcript_path)); } catch { name = ""; }
   }
-  return { title: notificationTitle(name, folder), body: cap(clean(body), 200) };
+  return { title: notificationTitle(name, folder), body: cap(clean(body), BODY_LIMIT) };
 }
 
 const AGENT_NAME = "Claude";
@@ -242,12 +277,17 @@ const AGENT_NAME = "Claude";
 // each, and drops the rest without an ellipsis.
 const TITLE_LIMIT = 80;
 const SESSION_NAME_MIN_CHARS = 16;
+const BODY_LIMIT = 200;
+// A reply sentence that does not fit whole is cut when it starts before this
+// position in the body, and left out when it starts later: the toast would
+// show only a few of its words.
+const CUT_SENTENCE_START_LIMIT = 160;
 
 // `Claude: <session name> · <folder>`. The session name is cut first, so the
 // folder stays readable.
 function notificationTitle(name, folder) {
   const prefix = `${AGENT_NAME}: `;
-  const folderLength = folder ? Array.from(` · ${folder}`).length : 0;
+  const folderLength = folder ? charLength(` · ${folder}`) : 0;
   const room = Math.max(TITLE_LIMIT - prefix.length - folderLength, SESSION_NAME_MIN_CHARS);
   const parts = [name ? cap(name, room) : "", folder].filter(Boolean);
   return parts.length ? cap(prefix + parts.join(" · "), TITLE_LIMIT) : AGENT_NAME;
@@ -289,5 +329,5 @@ if (require.main === module) {
   process.exitCode = 0;
   main();
 } else {
-  module.exports = { build, clean, detectFormat, firstSentences, mask, output, sequence, sessionTitle };
+  module.exports = { build, clean, detectFormat, mask, output, replySummary, sequence, sessionTitle };
 }

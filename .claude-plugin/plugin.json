@@ -1,6 +1,6 @@
 {
   "name": "terminal-notify",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Desktop notifications through your terminal when Claude Code finishes, asks a question or needs a permission. From the makers of Agent Terminal (https://4nuva.dev/agent-terminal/), which also forwards them to your phone.",
   "author": { "name": "Agent Terminal", "url": "https://4nuva.dev/agent-terminal/" },
   "homepage": "https://4nuva.dev/agent-terminal/",
