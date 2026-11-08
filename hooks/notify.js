@@ -238,6 +238,8 @@ function build(p, env) {
 }
 
 const AGENT_NAME = "Claude";
+// A Windows toast shows two lines of title, about 47 lowercase characters
+// each, and drops the rest without an ellipsis.
 const TITLE_LIMIT = 80;
 const SESSION_NAME_MIN_CHARS = 16;
 
