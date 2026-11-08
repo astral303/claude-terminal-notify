@@ -217,7 +217,11 @@ function output(p, env) {
   const n = build(p, env);
   if (!n) return null;
   const seq = sequence(format, n.title, n.body);
-  return seq ? { terminalSequence: seq } : null;
+  if (!seq) return null;
+  // Ring before the notification: Agent Terminal keeps the last notice of a
+  // burst, and the notification is the one that carries the text.
+  const ringsBell = format !== "bell" && flag(env, "ring_bell", false);
+  return { terminalSequence: (ringsBell ? BEL : "") + seq };
 }
 
 function main() {

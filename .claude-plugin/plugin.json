@@ -1,6 +1,6 @@
 {
   "name": "terminal-notify",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Desktop notifications through your terminal when Claude Code finishes, asks a question or needs a permission. From the makers of Agent Terminal (https://4nuva.dev/agent-terminal/), which also forwards them to your phone.",
   "author": { "name": "Agent Terminal", "url": "https://4nuva.dev/agent-terminal/" },
   "homepage": "https://4nuva.dev/agent-terminal/",
@@ -25,6 +25,12 @@
       "type": "boolean",
       "title": "Idle reminder",
       "description": "Notify again when the prompt has waited 60 seconds for a reply.",
+      "default": false
+    },
+    "ring_bell": {
+      "type": "boolean",
+      "title": "Ring the bell too",
+      "description": "Also ring the terminal bell with each notification, so the terminal marks the tab. Windows Terminal rings it as the profile's bellStyle sets, which can include a sound and a second notification.",
       "default": false
     },
     "node": {

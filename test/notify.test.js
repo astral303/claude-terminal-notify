@@ -94,6 +94,13 @@ test("format option overrides detection, off and bad values", () => {
   assert.strictEqual(output(stop, { TERMINAL_NOTIFY_FORMAT: "bell" }).terminalSequence, "\x07");
 });
 
+test("ring_bell rings the bell before the notification, once with the bell format", () => {
+  const env = { WT_SESSION: "x", CLAUDE_PLUGIN_OPTION_RING_BELL: "true" };
+  assert.ok(output(stop, env).terminalSequence.startsWith("\x07\x1b]777;notify;"));
+  assert.strictEqual(output(stop, { ...env, CLAUDE_PLUGIN_OPTION_FORMAT: "bell" }).terminalSequence, "\x07");
+  assert.ok(output(stop, { WT_SESSION: "x" }).terminalSequence.startsWith("\x1b]777;notify;"));
+});
+
 test("every hook runs the node option, which defaults to node", () => {
   const manifest = require("../.claude-plugin/plugin.json");
   const { hooks } = require("../hooks/hooks.json");
