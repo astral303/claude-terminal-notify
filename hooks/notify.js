@@ -61,13 +61,13 @@ function cap(s, n) {
   return chars.length <= n ? s : chars.slice(0, n - 1).join("") + "…";
 }
 
-// The reply as plain-text sentences, in order. Code, tables, headings and
-// rules are left out. Each line ends a sentence, so a list item does not run
-// into the sentence before it.
+// The reply as plain-text sentences, in order. Code blocks, tables, headings
+// and rules are left out. Each line ends a sentence, so a list item does not
+// run into the sentence before it.
 function replySentences(text) {
   const prose = String(text || "")
     .replace(/```[\s\S]*?(```|$)/g, "\n")
-    .replace(/`[^`]*`/g, " ");
+    .replace(/`([^`]*)`/g, "$1");
   const sentences = [];
   for (const rawLine of prose.split("\n")) {
     if (/^\s*(?:\||#{1,6}\s)/.test(rawLine)) continue;
@@ -77,10 +77,7 @@ function replySentences(text) {
     if (!/[\p{L}\p{N}]/u.test(line)) continue;
     // A sentence ends at punctuation followed by a space, not at the dot in
     // a file name or a version number.
-    const lineSentences = line.match(/.+?(?:[.!?]+(?=\s|$)|$)/g).map((s) => s.trim()).filter(Boolean);
-    const last = lineSentences.length - 1;
-    if (!/[.!?:;…]$/.test(lineSentences[last])) lineSentences[last] += ".";
-    sentences.push(...lineSentences);
+    sentences.push(...line.match(/.+?(?:[.!?]+(?=\s|$)|$)/g).map((s) => s.trim()).filter(Boolean));
   }
   return sentences;
 }

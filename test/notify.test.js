@@ -48,7 +48,7 @@ test("a sentence that does not fit is cut when it starts before character 160, l
   assert.strictEqual(stopBody(`${opening} ${long}`), `Task complete: ${opening}`);
 });
 
-test("tables, headings, rules and code stay out of the summary, and list items end sentences", () => {
+test("tables, headings, rules and code blocks stay out of the summary", () => {
   const reply = [
     "No: the title fits.",
     "",
@@ -67,11 +67,11 @@ test("tables, headings, rules and code stay out of the summary, and list items e
     "```",
     "Done",
   ].join("\n");
-  assert.strictEqual(stopBody(reply), "Task complete: No: the title fits. Push the branches. Fix the bug. Done.");
+  assert.strictEqual(stopBody(reply), "Task complete: No: the title fits. Push the branches Fix the bug Done");
 });
 
-test("a dot inside a file name or a version does not end a sentence", () => {
-  assert.strictEqual(stopBody("Fixed notify.js for 1.3.1. Tests pass."), "Task complete: Fixed notify.js for 1.3.1. Tests pass.");
+test("inline code keeps its text, and a dot inside a file name or a version does not end a sentence", () => {
+  assert.strictEqual(stopBody("Fixed `notify.js` for 1.3.1. Tests pass."), "Task complete: Fixed notify.js for 1.3.1. Tests pass.");
 });
 
 test("Stop falls back to the last reply in the transcript", () => {
