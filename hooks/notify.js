@@ -235,7 +235,10 @@ function build(p, env) {
   const ev = p.hook_event_name;
   let body;
   if (ev === "Stop") {
-    const prefix = "Task complete: ";
+    // A background task wakes Claude for another turn when it finishes, so
+    // this reply is not the last one.
+    const label = Array.isArray(p.background_tasks) && p.background_tasks.length ? "In-progress reply" : "Reply";
+    const prefix = `${label}: `;
     const room = BODY_LIMIT - prefix.length;
     const cutBefore = CUT_SENTENCE_START_LIMIT - prefix.length;
     let summary = "";
@@ -245,7 +248,7 @@ function build(p, env) {
         if (!summary && p.transcript_path) summary = replySummary(lastAssistantText(p.transcript_path), room, cutBefore);
       } catch { summary = ""; }
     }
-    body = summary ? prefix + summary : "Task complete";
+    body = summary ? prefix + summary : label;
   } else if (ev === "PermissionRequest") {
     const tool = clean(p.tool_name) || "a tool";
     const sum = details ? cap(clean(summarize(p.tool_input)), 80) : "";

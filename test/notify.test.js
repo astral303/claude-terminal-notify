@@ -25,27 +25,34 @@ const reply = { type: "assistant", message: { role: "assistant", content: [{ typ
 test("Stop names the folder and the start of the reply", () => {
   assert.deepStrictEqual(build(stop, {}), {
     title: "Claude: my-app",
-    body: "Task complete: Fixed the bug. Tests pass. More text.",
+    body: "Reply: Fixed the bug. Tests pass. More text.",
   });
 });
 
 const stopBody = (reply) => build({ ...stop, last_assistant_message: reply }, {}).body;
+
+test("a turn that leaves background tasks running is an in-progress reply", () => {
+  const running = [{ id: "t1", type: "subagent", status: "running", agent_type: "general-purpose" }];
+  assert.strictEqual(build({ ...stop, background_tasks: running }, {}).body, "In-progress reply: Fixed the bug. Tests pass. More text.");
+  assert.strictEqual(build({ ...stop, background_tasks: running }, { CLAUDE_PLUGIN_OPTION_DETAILS: "false" }).body, "In-progress reply");
+  assert.strictEqual(build({ ...stop, background_tasks: [] }, {}).body, "Reply: Fixed the bug. Tests pass. More text.");
+});
 const charCount = (s) => Array.from(s).length;
 
 test("Stop fits as many whole sentences of the reply as the body holds", () => {
   const sentences = Array(30).fill("abcdefghi.");
-  assert.strictEqual(stopBody(sentences.join(" ")), "Task complete: " + sentences.slice(0, 16).join(" "));
+  assert.strictEqual(stopBody(sentences.join(" ")), "Reply: " + sentences.slice(0, 17).join(" "));
 });
 
 test("a sentence that does not fit is cut when it starts before character 160, left out after", () => {
   const long = "word ".repeat(60).trim() + ".";
   const cut = stopBody(`Done. ${long}`);
   assert.strictEqual(charCount(cut), 200);
-  assert.ok(cut.startsWith("Task complete: Done. word word") && cut.endsWith("…"), cut);
+  assert.ok(cut.startsWith("Reply: Done. word word") && cut.endsWith("…"), cut);
   assert.ok(stopBody(long).endsWith("…"));
-  // 15 + 150 characters: the long sentence would start at character 166.
-  const opening = "abcd ".repeat(30).trim() + ".";
-  assert.strictEqual(stopBody(`${opening} ${long}`), `Task complete: ${opening}`);
+  // 7 + 155 characters: the long sentence would start at character 163.
+  const opening = "abcd ".repeat(31).trim() + ".";
+  assert.strictEqual(stopBody(`${opening} ${long}`), `Reply: ${opening}`);
 });
 
 test("tables, headings, rules and code blocks stay out of the summary", () => {
@@ -67,16 +74,16 @@ test("tables, headings, rules and code blocks stay out of the summary", () => {
     "```",
     "Done",
   ].join("\n");
-  assert.strictEqual(stopBody(reply), "Task complete: No: the title fits. Push the branches Fix the bug Done");
+  assert.strictEqual(stopBody(reply), "Reply: No: the title fits. Push the branches Fix the bug Done");
 });
 
 test("inline code keeps its text, and a dot inside a file name or a version does not end a sentence", () => {
-  assert.strictEqual(stopBody("Fixed `notify.js` for 1.3.1. Tests pass."), "Task complete: Fixed notify.js for 1.3.1. Tests pass.");
+  assert.strictEqual(stopBody("Fixed `notify.js` for 1.3.1. Tests pass."), "Reply: Fixed notify.js for 1.3.1. Tests pass.");
 });
 
 test("Stop falls back to the last reply in the transcript", () => {
   const n = build({ hook_event_name: "Stop", cwd: "/work/my-app", transcript_path: transcriptWith(reply, generated("Tidy up")) }, {});
-  assert.deepStrictEqual(n, { title: "Claude: Tidy up · my-app", body: "Task complete: Done." });
+  assert.deepStrictEqual(n, { title: "Claude: Tidy up · my-app", body: "Reply: Done." });
 });
 
 test("session title: the newest rename wins over a newer generated title", () => {
@@ -119,7 +126,7 @@ test("permission and question bodies", () => {
 
 test("details off shows the event alone", () => {
   const env = { CLAUDE_PLUGIN_OPTION_DETAILS: "false" };
-  assert.strictEqual(build(stop, env).body, "Task complete");
+  assert.strictEqual(build(stop, env).body, "Reply");
   assert.strictEqual(build({ hook_event_name: "PermissionRequest", tool_name: "Bash", tool_input: { command: "rm -rf x" } }, env).body, "Permission needed: Bash");
 });
 
@@ -200,7 +207,7 @@ test("every hook runs the node option, which defaults to node", () => {
 test("the script prints the hook output and exits 0, even on bad input", () => {
   const ok = spawnSync(process.execPath, [SCRIPT], { input: JSON.stringify(stop), env: { WT_SESSION: "x" } });
   assert.strictEqual(ok.status, 0);
-  assert.deepStrictEqual(JSON.parse(ok.stdout.toString()), { terminalSequence: "\x1b]777;notify;Claude: my-app;Task complete: Fixed the bug. Tests pass. More text.\x07" });
+  assert.deepStrictEqual(JSON.parse(ok.stdout.toString()), { terminalSequence: "\x1b]777;notify;Claude: my-app;Reply: Fixed the bug. Tests pass. More text.\x07" });
   const bad = spawnSync(process.execPath, [SCRIPT], { input: "not json" });
   assert.strictEqual(bad.status, 0);
   assert.strictEqual(bad.stdout.toString(), "");

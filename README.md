@@ -6,7 +6,8 @@
 
 A Claude Code plugin that raises a desktop notification through your terminal when Claude:
 
-- finishes a turn: `Task complete: Fixed the failing test. All 42 tests pass.`
+- finishes a turn: `Reply: Fixed the failing test. All 42 tests pass.`
+- ends a turn while background agents or commands keep running: `In-progress reply: The test run is still going. I'll report when it finishes.`
 - needs a permission: `Permission needed: Bash — npm run deploy`
 - asks you a question: `Question: Which database should I use?`
 
