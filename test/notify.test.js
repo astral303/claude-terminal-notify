@@ -94,6 +94,14 @@ test("format option overrides detection, off and bad values", () => {
   assert.strictEqual(output(stop, { TERMINAL_NOTIFY_FORMAT: "bell" }).terminalSequence, "\x07");
 });
 
+test("every hook runs the node option, which defaults to node", () => {
+  const manifest = require("../.claude-plugin/plugin.json");
+  const { hooks } = require("../hooks/hooks.json");
+  const commands = Object.values(hooks).flat().flatMap((group) => group.hooks.map((hook) => hook.command));
+  assert.deepStrictEqual([...new Set(commands)], ["${user_config.node}"]);
+  assert.strictEqual(manifest.userConfig.node.default, "node");
+});
+
 test("the script prints the hook output and exits 0, even on bad input", () => {
   const ok = spawnSync(process.execPath, [SCRIPT], { input: JSON.stringify(stop), env: { WT_SESSION: "x" } });
   assert.strictEqual(ok.status, 0);

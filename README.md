@@ -26,7 +26,7 @@ Answer `y` to add the marketplace, then pick a scope. From a shell:
 claude plugin install terminal-notify --marketplace 4nuva/claude-terminal-notify
 ```
 
-Requires [Node.js](https://nodejs.org/) 18 or later on your `PATH`.
+Requires [Node.js](https://nodejs.org/) 18 or later, on your `PATH` or set as the `node` option.
 
 ## Terminals
 
@@ -59,6 +59,7 @@ Set these when you install, or later in `/plugin` → terminal-notify → Config
 | `format` | `auto` | `auto`, `osc777`, `osc9`, `osc99`, `all`, `bell` or `off`. `all` sends all three sequences, for a terminal `auto` does not know; a terminal that reads more than one (Ghostty reads 9 and 777) shows more than one. |
 | `details` | on | Include the start of the reply, the command or file a permission is for, and the question. Off shows only the event. |
 | `idle_reminder` | off | Notify again when the prompt has waited 60 seconds for a reply |
+| `node` | `node` | The Node.js executable the hooks run. Set a full path when Node.js is not on your `PATH`, for example `node.exe` in the folder `mise where node` prints. |
 
 ## Privacy
 
